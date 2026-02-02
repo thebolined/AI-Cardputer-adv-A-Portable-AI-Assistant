@@ -53,4 +53,11 @@ This project is under active development. Future updates will include:
 * [ ] Voice-to-Text capabilities using the onboard microphone.
 * [ ] UI themes and customization options.
 
+![374bfb8fb4fe78b3726e1925f033de36](https://github.com/user-attachments/assets/6d037e4d-ec0e-49aa-8b0a-3ac8fa4673e9)
+
+![fb10f4880a4f0b3530359e9b14a5dbd4](https://github.com/user-attachments/assets/ca86e5f4-92af-4ddb-b3ea-706843ccf33e)
+
+![483d3d0c1ea007f0871b400b44062727](https://github.com/user-attachments/assets/234eff61-8040-407e-aca5-2bb679f90a34)
+
+
 **Maintained by: Anakin** *Stay tuned for more updates! 本项目将持续维护，敬请期待更多功能！*
