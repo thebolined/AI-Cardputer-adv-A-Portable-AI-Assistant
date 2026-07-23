@@ -1,4 +1,35 @@
-# AI-Cardputer-adv-A-Portable-AI-Assistant
+# AI-Cardputer-adv-A-Portable-AI-Assistant (Kimi Fork)
+
+> **This fork adds 🌙 Kimi (Moonshot AI) support in v1.3 — see below.**
+> Original project by thebolined / Anakin. All credit for v1.0–v1.2 goes upstream.
+
+---
+
+## 🌙 v1.3 — Kimi (Moonshot AI) Support (this fork)
+
+`m5stack_ai_assistant(v1.3).ino` adds **Kimi** as a third AI engine alongside Qwen-Turbo and DeepSeek-Chat.
+
+### What changed
+* **Kimi engine added**: model selector now lists `Qwen-Turbo` / `DeepSeek-Chat` / `Kimi-Code` (scroll with `;` / `.`, `Fn + M` to switch mid-chat).
+* **OpenAI-compatible call**: Kimi uses the standard `/chat/completions` format, same code path as DeepSeek.
+* **Magenta status bar**: the UI theme turns magenta while Kimi is active (Qwen: teal, DeepSeek: blue).
+* **Separate key storage**: your Kimi key is stored independently in NVS (`kimi_key`); long-press G0 for 2s to wipe everything.
+
+### Which endpoint / key to use
+Two Moonshot key types work — pick the one matching your key (top of the sketch):
+
+| Key type | `KIMI_API_URL` | `KIMI_MODEL` |
+| --- | --- | --- |
+| **Kimi Code subscription key** (`sk-kimi-...`) | `https://api.kimi.com/coding/v1/chat/completions` *(default)* | `kimi-for-coding` *(default)* |
+| **Regular platform key** (pay-per-token, platform.moonshot.ai) | `https://api.moonshot.ai/v1/chat/completions` | `kimi-k3` or `kimi-k2.7-code` |
+
+If you get `Error: 401`, you're likely using the wrong endpoint for your key type — flip the `#define`s at the top of the sketch.
+
+### Flash
+Same as v1.2: Arduino IDE, `M5Cardputer` + `ArduinoJson` (7.x) libraries, partition scheme **Huge APP (3MB No OTA)**. On first run, select **Kimi-Code** in the model menu and paste your API key when prompted.
+
+---
+
 # 🚀 Qwen-Cardputer: A Portable AI Assistant
 
 **Qwen-Cardputer** is an open-source, portable AI terminal built for the **M5Cardputer**. It integrates the powerful AliCloud Qwen (Tongyi Qianwen) LLM into a handheld form factor, allowing you to interact with advanced artificial intelligence anytime, anywhere via Wi-Fi.
@@ -49,7 +80,7 @@ To use the AI features, you need an API Key from AliCloud DashScope.
 
 ## 📅 Roadmap / 开发计划
 This project is under active development. Future updates will include:
-* [ ] Integration of more AI APIs (DeepSeek, GPT-4o, Claude).
+* [x] Integration of more AI APIs (DeepSeek, ~~GPT-4o, Claude~~ → **Kimi** added in this fork).
 * [ ] Voice-to-Text capabilities using the onboard microphone.
 * [ ] UI themes and customization options.
 
@@ -133,11 +164,11 @@ v1.2 update
 
 | Key (按键) | Function (EN) | 功能 (CN) |
 | --- | --- | --- |
-| **`;` / `.**` | **Scroll**: Navigate lists (Up/Down) | **滚动**：列表向上 / 向下 |
+| **`;` / `.`** | **Scroll**: Navigate lists (Up/Down) | **滚动**：列表向上 / 向下 |
 | **Enter** | **Confirm**: Send / Select / Enter | **确认**：发送消息 / 确认选择 |
 | **Del** | **Delete**: Backspace character | **删除**：回退输入字符 |
 | **Fn + `,` / `/**` | **Cursor**: Move left / right | **光标**：左右移动输入光标 |
-| **Fn + `;` / `.**` | **Screen Scroll**: View history | **屏幕滚动**：查阅长回复历史 |
+| **Fn + `;` / `.`** | **Screen Scroll**: View history | **屏幕滚动**：查阅长回复历史 |
 | **Fn + M** | **Switch**: Change AI Model | **切换**：实时弹出模型菜单 |
 | **G0 Button** | **Hard Reset**: Long press 2s to wipe | **重置**：侧边按键长按 2s 清除所有配置 |
 
@@ -173,11 +204,18 @@ v1.2 update
 
 ### 📜 Changelog | 更新日志
 
-* **v1.2 (Current)**:
+* **v1.3 (this fork)**:
+* Added Kimi (Moonshot AI) engine via OpenAI-compatible endpoint.
+* Kimi Code subscription key support (`kimi-for-coding`).
+* Magenta status bar theme for Kimi.
+* **v1.3（本 Fork）**：新增 Kimi 引擎；支持 Kimi Code 订阅 Key；Kimi 主题状态栏。
+
+
+* **v1.2**:
 * Added DeepSeek API support.
 * Implemented interactive model selection menu.
 * Optimized Preferences storage logic.
-* **v1.2 (当前版本)**：增加 DeepSeek 支持；实现交互式模型菜单；优化存储逻辑。
+* **v1.2**：增加 DeepSeek 支持；实现交互式模型菜单；优化存储逻辑。
 
 
 * **v1.1**:
@@ -186,4 +224,4 @@ v1.2 update
 * **v1.1**：实现基础 Qwen 调用、启动动画及 WiFi 持久化。
 
 
-**Maintained by: Anakin** *Stay tuned for more updates! 本项目将持续维护，敬请期待更多功能！*
+**Original: Anakin | Kimi fork: PerrySm** *Stay tuned for more updates! 本项目将持续维护，敬请期待更多功能！*
