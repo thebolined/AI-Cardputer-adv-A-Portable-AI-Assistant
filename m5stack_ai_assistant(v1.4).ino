@@ -3,7 +3,8 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
-#include <SD_MMC.h>
+#include <SPI.h>
+#include <SD.h>
 
 // --- Kimi (Moonshot AI) 配置 ---
 // Kimi Code 订阅 Key (sk-kimi-...) 走 coding 端点；
@@ -12,10 +13,11 @@
 #define KIMI_API_URL "https://api.kimi.com/coding/v1/chat/completions"
 #define KIMI_MODEL   "kimi-for-coding"
 
-// Cardputer SD 卡引脚 (SD_MMC 1-bit 模式)
-#define SD_PIN_CLK 39
-#define SD_PIN_CMD 38
-#define SD_PIN_D0  40
+// Cardputer / Cardputer ADV SD 卡引脚 (SPI 模式，官方 PinMap)
+#define SD_SPI_SCK_PIN  40
+#define SD_SPI_MISO_PIN 39
+#define SD_SPI_MOSI_PIN 14
+#define SD_SPI_CS_PIN   12
 
 // SD 卡根目录配置文件名 (KEY=value 格式，见 config.example.txt)
 #define CONFIG_FILE "/config.txt"
@@ -51,11 +53,12 @@ uint16_t modelColor() {
 // --- 从 SD 卡 config.txt 导入凭据 ---
 // 格式: 每行 KEY=value，支持 ssid / password / kimi_key / qwen_key / ds_key
 // 空行与 # 开头的行会被忽略；读取后删除文件，避免明文凭据留在卡上。
-void importConfigFromSD() {
-    SD_MMC.setPins(SD_PIN_CLK, SD_PIN_CMD, SD_PIN_D0);
-    if (!SD_MMC.begin("/sdcard", true)) return; // 无卡或挂载失败
-    File f = SD_MMC.open(CONFIG_FILE);
-    if (!f) { SD_MMC.end(); return; }
+// 返回导入状态文本，用于开机提示。
+String importConfigFromSD() {
+    SPI.begin(SD_SPI_SCK_PIN, SD_SPI_MISO_PIN, SD_SPI_MOSI_PIN, SD_SPI_CS_PIN);
+    if (!SD.begin(SD_SPI_CS_PIN, SPI, 25000000)) { SPI.end(); return "no SD card"; }
+    File f = SD.open(CONFIG_FILE);
+    if (!f) { SD.end(); SPI.end(); return "no config.txt"; }
 
     String wSsid = "", wPass = "", kKimi = "", kQwen = "", kDs = "";
     while (f.available()) {
@@ -74,20 +77,25 @@ void importConfigFromSD() {
         else if (k == "ds_key" || k == "deepseek_key" || k == "deepseek") kDs = v;
     }
     f.close();
-    SD_MMC.remove(CONFIG_FILE); // 导入后删除明文配置文件
-    SD_MMC.end();
+    SD.remove(CONFIG_FILE); // 导入后删除明文配置文件
+    SD.end();
+    SPI.end();
 
+    String status = "imported:";
     if (wSsid.length() > 0) {
         prefs.begin("qwen-config", false);
         prefs.putString("ssid", wSsid);
         prefs.putString("password", wPass);
         prefs.end();
+        status += " wifi";
     }
     prefs.begin("ai-keys", false);
-    if (kKimi.length() > 0) prefs.putString("kimi_key", kKimi);
-    if (kQwen.length() > 0) prefs.putString("qwen_key", kQwen);
-    if (kDs.length()   > 0) prefs.putString("ds_key", kDs);
+    if (kKimi.length() > 0) { prefs.putString("kimi_key", kKimi); status += " kimi"; }
+    if (kQwen.length() > 0) { prefs.putString("qwen_key", kQwen); status += " qwen"; }
+    if (kDs.length()   > 0) { prefs.putString("ds_key", kDs);   status += " deepseek"; }
     prefs.end();
+    if (status == "imported:") status = "config.txt empty";
+    return status;
 }
 
 void saveWiFiPrefs() {
@@ -110,7 +118,7 @@ void playStartupAnimation() {
         }
         canvas.setTextSize(1.0);
         canvas.setTextColor(DARKGREY);
-        canvas.drawString("Anakin v1.4 + Kimi", 140, 118);
+        canvas.drawString("Anakin v1.4.1 + Kimi", 135, 118);
         if (i > 10 && i < 40) {
             canvas.setTextColor(WHITE);
             if (i % 2 == 0) canvas.drawCenterString("SYSTEM STARTING...", 120, 55);
@@ -200,6 +208,7 @@ String getKbdInput(String title, String initialValue = "") {
 }
 
 // --- 模型选择界面 ---
+// Enter = 确认选择 ; Del = 清除当前高亮模型已存的 Key (用于换 Key / 修复错误 Key)
 void selectModelUI() {
     while (true) {
         M5Cardputer.update();
@@ -216,9 +225,26 @@ void selectModelUI() {
             canvas.setTextColor(WHITE);
             canvas.print(modelList[i]);
         }
+        canvas.setCursor(5, 122);
+        canvas.setTextColor(DARKGREY);
+        canvas.print("Del: clear saved key");
         canvas.pushSprite(0, 0);
 
         if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+            auto s = M5Cardputer.Keyboard.keysState();
+            if (s.del) { // 清除高亮模型的 Key
+                prefs.begin("ai-keys", false);
+                if (selectedModelIdx == 0)      { prefs.remove("qwen_key"); qwenApiKey = ""; }
+                else if (selectedModelIdx == 1) { prefs.remove("ds_key");   dsApiKey = ""; }
+                else                            { prefs.remove("kimi_key"); kimiApiKey = ""; }
+                prefs.end();
+                canvas.setCursor(5, 122);
+                canvas.setTextColor(RED);
+                canvas.print("Key cleared! Enter=re-set");
+                canvas.pushSprite(0, 0);
+                delay(900);
+                continue;
+            }
             if (M5Cardputer.Keyboard.isKeyPressed(';')) { // 上
                 if (selectedModelIdx > 0) selectedModelIdx--;
             } else if (M5Cardputer.Keyboard.isKeyPressed('.')) { // 下
@@ -355,7 +381,11 @@ void callAPI() {
         else
             aiResponse = resDoc["choices"][0]["message"]["content"].as<String>();
     } else {
-        aiResponse = "Error: " + String(code);
+        // 显示服务器返回的错误详情，便于排查 (401=Key 无效/端点不匹配 等)
+        String resp = http.getString();
+        resp.replace("\n", " ");
+        if (resp.length() > 100) resp = resp.substring(0, 100) + "...";
+        aiResponse = "Err " + String(code) + ": " + resp;
     }
     http.end();
     updateDisplay(0);
@@ -368,8 +398,15 @@ void setup() {
     canvas.createSprite(240, 135);
     playStartupAnimation(); 
 
-    // 先从 SD 卡 config.txt 导入凭据 (若存在)
-    importConfigFromSD();
+    // 先从 SD 卡 config.txt 导入凭据 (若存在)，并显示导入结果
+    String cfgStatus = importConfigFromSD();
+    canvas.fillSprite(BLACK);
+    canvas.setFont(&fonts::efontCN_12);
+    canvas.setCursor(5, 55);
+    canvas.setTextColor(DARKGREY);
+    canvas.print("SD: " + cfgStatus);
+    canvas.pushSprite(0, 0);
+    delay(1200);
 
     prefs.begin("qwen-config", false);
     ssid = prefs.getString("ssid", "");
