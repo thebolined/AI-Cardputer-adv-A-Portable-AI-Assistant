@@ -1,0 +1,3 @@
+# Never commit API keys or WiFi credentials
+*_key.txt
+wifi.txt
