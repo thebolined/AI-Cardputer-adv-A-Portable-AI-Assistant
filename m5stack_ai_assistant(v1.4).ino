@@ -17,6 +17,9 @@
 #define SD_PIN_CMD 38
 #define SD_PIN_D0  40
 
+// SD 卡根目录配置文件名 (KEY=value 格式，见 config.example.txt)
+#define CONFIG_FILE "/config.txt"
+
 Preferences prefs;
 M5Canvas canvas(&M5Cardputer.Display); 
 
@@ -45,36 +48,46 @@ uint16_t modelColor() {
     return DARKCYAN;
 }
 
-// --- SD 卡导入 ---
-// 在 SD 根目录放置单行 Key 文件 (kimi_key.txt / qwen_key.txt / ds_key.txt)。
-// 成功读取后自动删除文件，避免明文 Key 长期留在卡上。
-String loadKeyFromSD(const char* path) {
+// --- 从 SD 卡 config.txt 导入凭据 ---
+// 格式: 每行 KEY=value，支持 ssid / password / kimi_key / qwen_key / ds_key
+// 空行与 # 开头的行会被忽略；读取后删除文件，避免明文凭据留在卡上。
+void importConfigFromSD() {
     SD_MMC.setPins(SD_PIN_CLK, SD_PIN_CMD, SD_PIN_D0);
-    if (!SD_MMC.begin("/sdcard", true)) return ""; // 无卡或挂载失败
-    File f = SD_MMC.open(path);
-    if (!f) { SD_MMC.end(); return ""; }
-    String val = f.readStringUntil('\n');
-    f.close();
-    val.trim();
-    if (val.length() > 0) SD_MMC.remove(path); // 导入后删除明文文件
-    SD_MMC.end();
-    return val;
-}
+    if (!SD_MMC.begin("/sdcard", true)) return; // 无卡或挂载失败
+    File f = SD_MMC.open(CONFIG_FILE);
+    if (!f) { SD_MMC.end(); return; }
 
-// 从 SD 根目录 wifi.txt 读取凭据 (第1行 SSID, 第2行密码)，读取后删除文件。
-bool loadWiFiFromSD() {
-    SD_MMC.setPins(SD_PIN_CLK, SD_PIN_CMD, SD_PIN_D0);
-    if (!SD_MMC.begin("/sdcard", true)) return false;
-    File f = SD_MMC.open("/wifi.txt");
-    if (!f) { SD_MMC.end(); return false; }
-    String s = f.readStringUntil('\n'); s.trim();
-    String p = f.readStringUntil('\n'); p.trim();
+    String wSsid = "", wPass = "", kKimi = "", kQwen = "", kDs = "";
+    while (f.available()) {
+        String line = f.readStringUntil('\n');
+        line.trim();
+        if (line.length() == 0 || line.startsWith("#")) continue;
+        int eq = line.indexOf('=');
+        if (eq <= 0) continue;
+        String k = line.substring(0, eq); k.trim(); k.toLowerCase();
+        String v = line.substring(eq + 1); v.trim();
+        if (v.length() == 0) continue;
+        if (k == "ssid" || k == "wifi_ssid") wSsid = v;
+        else if (k == "password" || k == "wifi_password") wPass = v;
+        else if (k == "kimi_key" || k == "kimi") kKimi = v;
+        else if (k == "qwen_key" || k == "qwen") kQwen = v;
+        else if (k == "ds_key" || k == "deepseek_key" || k == "deepseek") kDs = v;
+    }
     f.close();
-    if (s.length() == 0) { SD_MMC.end(); return false; }
-    ssid = s; password = p;
-    SD_MMC.remove("/wifi.txt");
+    SD_MMC.remove(CONFIG_FILE); // 导入后删除明文配置文件
     SD_MMC.end();
-    return true;
+
+    if (wSsid.length() > 0) {
+        prefs.begin("qwen-config", false);
+        prefs.putString("ssid", wSsid);
+        prefs.putString("password", wPass);
+        prefs.end();
+    }
+    prefs.begin("ai-keys", false);
+    if (kKimi.length() > 0) prefs.putString("kimi_key", kKimi);
+    if (kQwen.length() > 0) prefs.putString("qwen_key", kQwen);
+    if (kDs.length()   > 0) prefs.putString("ds_key", kDs);
+    prefs.end();
 }
 
 void saveWiFiPrefs() {
@@ -211,21 +224,21 @@ void selectModelUI() {
             } else if (M5Cardputer.Keyboard.isKeyPressed('.')) { // 下
                 if (selectedModelIdx < modelCount - 1) selectedModelIdx++;
             } else if (M5Cardputer.Keyboard.isKeyPressed(KEY_ENTER)) {
-                // 检查选定模型的 Key：NVS → SD 卡 txt → 手动输入
+                // 检查选定模型的 Key：NVS → SD config.txt → 手动输入
                 prefs.begin("ai-keys", false);
                 if (selectedModelIdx == 0) {
                     qwenApiKey = prefs.getString("qwen_key", "");
-                    if (qwenApiKey == "") qwenApiKey = loadKeyFromSD("/qwen_key.txt");
+                    if (qwenApiKey == "") { prefs.end(); importConfigFromSD(); prefs.begin("ai-keys", false); qwenApiKey = prefs.getString("qwen_key", ""); }
                     if (qwenApiKey == "") qwenApiKey = getKbdInput("Enter Qwen API Key");
                     prefs.putString("qwen_key", qwenApiKey);
                 } else if (selectedModelIdx == 1) {
                     dsApiKey = prefs.getString("ds_key", "");
-                    if (dsApiKey == "") dsApiKey = loadKeyFromSD("/ds_key.txt");
+                    if (dsApiKey == "") { prefs.end(); importConfigFromSD(); prefs.begin("ai-keys", false); dsApiKey = prefs.getString("ds_key", ""); }
                     if (dsApiKey == "") dsApiKey = getKbdInput("Enter DeepSeek API Key");
                     prefs.putString("ds_key", dsApiKey);
                 } else {
                     kimiApiKey = prefs.getString("kimi_key", "");
-                    if (kimiApiKey == "") kimiApiKey = loadKeyFromSD("/kimi_key.txt");
+                    if (kimiApiKey == "") { prefs.end(); importConfigFromSD(); prefs.begin("ai-keys", false); kimiApiKey = prefs.getString("kimi_key", ""); }
                     if (kimiApiKey == "") kimiApiKey = getKbdInput("Enter Kimi API Key");
                     prefs.putString("kimi_key", kimiApiKey);
                 }
@@ -355,13 +368,13 @@ void setup() {
     canvas.createSprite(240, 135);
     playStartupAnimation(); 
 
+    // 先从 SD 卡 config.txt 导入凭据 (若存在)
+    importConfigFromSD();
+
     prefs.begin("qwen-config", false);
     ssid = prefs.getString("ssid", "");
     password = prefs.getString("password", "");
     prefs.end();
-
-    // NVS 无凭据时，先尝试从 SD 卡 wifi.txt 导入
-    if (ssid == "") loadWiFiFromSD();
 
     if (ssid == "") {
         while(!scanAndConnect()); 
