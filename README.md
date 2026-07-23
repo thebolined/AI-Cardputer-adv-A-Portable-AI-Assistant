@@ -15,18 +15,54 @@
 * **Magenta status bar**: the UI theme turns magenta while Kimi is active (Qwen: teal, DeepSeek: blue).
 * **Separate key storage**: your Kimi key is stored independently in NVS (`kimi_key`); long-press G0 for 2s to wipe everything.
 
+---
+
+### 🔑 Getting your Kimi key (membership / subscription)
+
+You do **not** need a separate pay-per-token developer account. Any Kimi membership tier (**Andante / Moderato / Allegretto / Allegro**) can mint API keys for third-party tools:
+
+1. Go to the **Kimi Code Console**: https://www.kimi.com/code/console and sign in with your Kimi account.
+2. Click **"Create API Key"**, give it a name (e.g. `cardputer`), and confirm.
+3. **Copy the key immediately** — it is shown only once. It starts with `sk-kimi-`. (You can hold up to 5 keys.)
+4. On the Cardputer, pick **Kimi-Code** in the model menu and paste the key when prompted. It is saved in NVS, so you only do this once.
+
+Notes:
+* Usage draws from your **membership quota**, not a metered bill.
+* Kimi Code keys and Kimi Open Platform keys are **not interchangeable** — a key from one returns `401` on the other.
+* With **Moderato or above** you can also change `KIMI_MODEL` in the sketch to `k3` (Kimi K3); `kimi-for-coding` (K2.7 Code) works on every tier.
+
 ### Which endpoint / key to use
+
 Two Moonshot key types work — pick the one matching your key (top of the sketch):
 
 | Key type | `KIMI_API_URL` | `KIMI_MODEL` |
 | --- | --- | --- |
-| **Kimi Code subscription key** (`sk-kimi-...`) | `https://api.kimi.com/coding/v1/chat/completions` *(default)* | `kimi-for-coding` *(default)* |
-| **Regular platform key** (pay-per-token, platform.moonshot.ai) | `https://api.moonshot.ai/v1/chat/completions` | `kimi-k3` or `kimi-k2.7-code` |
+| **Kimi Code / membership key** (`sk-kimi-...`) | `https://api.kimi.com/coding/v1/chat/completions` *(default)* | `kimi-for-coding` *(default)* |
+| **Open Platform key** (pay-per-token, platform.kimi.com) | `https://api.moonshot.ai/v1/chat/completions` | `kimi-k3` or `kimi-k2.7-code` |
 
-If you get `Error: 401`, you're likely using the wrong endpoint for your key type — flip the `#define`s at the top of the sketch.
+If you get `Error: 401`, you're using the wrong endpoint for your key type — flip the `#define`s at the top of the sketch.
 
-### Flash
-Same as v1.2: Arduino IDE, `M5Cardputer` + `ArduinoJson` (7.x) libraries, partition scheme **Huge APP (3MB No OTA)**. On first run, select **Kimi-Code** in the model menu and paste your API key when prompted.
+---
+
+### 🚀 Install Path A — via bmorcelli Launcher (recommended)
+
+Run this app **alongside Bruce and other firmware**, switchable from a boot menu. Source: [Launcher wiki — Obtaining binaries to launch](https://github.com/bmorcelli/Launcher/wiki/Obtaining-binaries-to-launch).
+
+1. **Install Launcher** on the Cardputer: web flasher at https://bmorcelli.github.io/Launcher/ (or via M5Burner).
+2. **Export the binary**: Arduino IDE → open `m5stack_ai_assistant(v1.3).ino` → `Sketch > Export Compiled Binary` → find the app binary in the generated `build` folder.
+3. **Rename it** to something simple, e.g. `kimi-cardputer.bin` — parentheses and spaces in filenames can trip the installer.
+4. **Copy it to a FAT32 microSD card**, insert the card, open `SD` in Launcher → select the file → **Install**. Launcher 2.7+ checks the image and creates a suitable app partition automatically — you do **not** need the "Huge APP" partition scheme for this path.
+   * No SD card? Open `WUI` in Launcher, browse to the shown IP from your computer, and upload the `.bin` there (default login `admin` / `launcher`).
+5. **Launch** the app from Launcher's main menu. `CFG > Boot to Launcher` controls whether the device boots to the menu or straight into the last-used app.
+
+Notes:
+* Your WiFi credentials and Kimi key live in NVS (`Preferences`) and **persist across Launcher app switches** — enter them once.
+* The G0 factory reset only clears this app's own NVS namespaces (`qwen-config`, `ai-keys`); Launcher's settings are untouched.
+* If an SD install fails, retry through the WebUI installer.
+
+### 🚀 Install Path B — direct flash (standalone)
+
+Arduino IDE → install `M5Cardputer` + `ArduinoJson` (7.x) libraries → partition scheme **Huge APP (3MB No OTA)** → upload. On first boot, select **Kimi-Code** in the model menu and paste your API key.
 
 ---
 
@@ -208,7 +244,8 @@ v1.2 update
 * Added Kimi (Moonshot AI) engine via OpenAI-compatible endpoint.
 * Kimi Code subscription key support (`kimi-for-coding`).
 * Magenta status bar theme for Kimi.
-* **v1.3（本 Fork）**：新增 Kimi 引擎；支持 Kimi Code 订阅 Key；Kimi 主题状态栏。
+* bmorcelli Launcher install path documented.
+* **v1.3（本 Fork）**：新增 Kimi 引擎；支持 Kimi Code 订阅 Key；Kimi 主题状态栏；补充 Launcher 安装路径。
 
 
 * **v1.2**:
