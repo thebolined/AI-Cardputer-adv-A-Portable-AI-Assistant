@@ -24,7 +24,7 @@ You do **not** need a separate pay-per-token developer account. Any Kimi members
 1. Go to the **Kimi Code Console**: https://www.kimi.com/code/console and sign in with your Kimi account.
 2. Click **"Create API Key"**, give it a name (e.g. `cardputer`), and confirm.
 3. **Copy the key immediately** — it is shown only once. It starts with `sk-kimi-`. (You can hold up to 5 keys.)
-4. Get the key onto the device — either via SD card (v1.4, recommended, see below) or by typing it when the **Kimi-Code** engine prompts on first use.
+4. Get the key onto the device — either via `config.txt` on the SD card (v1.4, recommended, see below) or by typing it when the **Kimi-Code** engine prompts on first use.
 
 Notes:
 * Usage draws from your **membership quota**, not a metered bill.
@@ -44,28 +44,35 @@ If you get `Error: 401`, you're using the wrong endpoint for your key type — f
 
 ---
 
-## 💾 v1.4 — Import keys & WiFi from SD card (this fork)
+## 💾 v1.4 — One config.txt on the SD card (this fork)
 
-Typing a 70-character API key (or a long WiFi password) on the Cardputer keyboard is painful and error-prone. v1.4 lets you stage credentials as plain text files on the SD card root instead.
+Typing a 70-character API key (or a long WiFi password) on the Cardputer keyboard is painful and error-prone. v1.4 lets you stage **all credentials in a single file** on the SD card root.
 
-### File formats (place on SD root)
+### Setup
 
-| File | Contents | Imported into |
-| --- | --- | --- |
-| `/kimi_key.txt` | one line: your `sk-kimi-...` key | NVS `kimi_key` |
-| `/qwen_key.txt` | one line: your DashScope key | NVS `qwen_key` |
-| `/ds_key.txt` | one line: your DeepSeek key | NVS `ds_key` |
-| `/wifi.txt` | line 1: SSID, line 2: password | NVS WiFi config |
+1. Copy [`config.example.txt`](config.example.txt) to the **root of a FAT32 microSD card** and rename it to `config.txt`.
+2. Fill in what you need (leave others empty):
+
+```ini
+ssid=YourWiFiName
+password=YourWiFiPassword
+
+kimi_key=sk-kimi-...
+qwen_key=
+ds_key=
+```
+
+* One `KEY=value` per line; blank lines and `#` comments are ignored.
+* Supported keys: `ssid`, `password`, `kimi_key`, `qwen_key`, `ds_key` (aliases like `wifi_ssid`, `deepseek_key` also work).
 
 ### How it works
-1. Create the file(s) on your computer, copy to the **root of a FAT32 microSD card**, insert the card.
-2. Boot the app. WiFi is imported at startup; API keys are imported the first time you select that engine.
-3. **After a successful import the file is automatically deleted from the SD card** — no plaintext key lingers on the card. The credential lives in NVS from then on (until a G0 factory reset).
-4. Lookup order per engine: **NVS → SD txt file → manual keyboard input**. If no SD card / no file is found, the old manual prompt appears as before.
+1. Insert the SD card and boot the app. WiFi credentials are imported at startup; API keys are imported at startup and again lazily the first time you select an engine.
+2. **After being read, `config.txt` is automatically deleted from the SD card** — no plaintext credentials linger on the card. Everything lives in NVS from then on (until a G0 factory reset).
+3. Lookup order per engine: **NVS → SD `config.txt` → manual keyboard input**. No SD card / no file → the old manual prompt appears as before.
 
 Security notes:
-* The `.gitignore` in this repo blocks `*_key.txt` and `wifi.txt` — never commit these files.
-* Anyone with the SD card can read the files before import. Import once, and the card is clean again.
+* The `.gitignore` in this repo blocks `config.txt` — never commit your filled-in file.
+* Anyone with the SD card can read the file before import. Import once, and the card is clean again.
 * Bonus fix in v1.4: saved WiFi credentials that fail now fall back to the scan UI instead of silently retrying.
 
 ---
@@ -143,7 +150,7 @@ To use the AI features, you need an API Key from AliCloud DashScope.
 ## 📅 Roadmap / 开发计划
 This project is under active development. Future updates will include:
 * [x] Integration of more AI APIs (DeepSeek, ~~GPT-4o, Claude~~ → **Kimi** added in this fork).
-* [x] SD-card credential import (no more typing long keys).
+* [x] SD-card credential import via a single `config.txt` (no more typing long keys).
 * [ ] Voice-to-Text capabilities using the onboard microphone.
 * [ ] UI themes and customization options.
 
@@ -268,10 +275,10 @@ v1.2 update
 ### 📜 Changelog | 更新日志
 
 * **v1.4 (this fork)**:
-* Import API keys (`kimi_key.txt` / `qwen_key.txt` / `ds_key.txt`) and WiFi (`wifi.txt`) from SD card root.
-* Imported files are auto-deleted from SD; credentials persist in NVS.
+* Single `config.txt` on SD root imports WiFi + all API keys (KEY=value format).
+* `config.txt` is auto-deleted from SD after import; credentials persist in NVS.
 * Fallback to WiFi scan UI when saved credentials fail.
-* **v1.4（本 Fork）**：支持从 SD 卡导入 Key 与 WiFi 凭据；导入后自动删除明文文件；凭据失效自动回退到扫描界面。
+* **v1.4（本 Fork）**：支持通过 SD 卡上的单个 config.txt 导入 WiFi 与全部 API Key；导入后自动删除明文文件；凭据失效自动回退到扫描界面。
 
 
 * **v1.3 (this fork)**:
