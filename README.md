@@ -1,55 +1,4 @@
-# AI-Cardputer-adv-A-Portable-AI-Assistant (Kimi Fork)
-
-> **This fork adds 🌙 Kimi K3 (Moonshot AI) support as v1.3**, prepared in upstream's style for a potential contribution.
-> Original project by thebolined / Anakin. All credit for v1.0–v1.2 goes upstream.
-
----
-
-## 🌙 v1.3 — Kimi K3 (Moonshot AI) — fork notes
-
-`m5stack_ai_assistant(v1.3).ino` adds **Kimi K3** as a third AI engine alongside Qwen-Turbo and DeepSeek-Chat.
-
-* **Kimi K3 engine**: model selector now lists `Qwen-Turbo` / `DeepSeek-Chat` / `Kimi K3` (scroll with `;` / `.`, `Fn + M` to switch mid-chat).
-* **OpenAI-compatible call**: Kimi uses the standard `/chat/completions` format, same code path as DeepSeek.
-* **Magenta status bar**: Qwen = teal, DeepSeek = blue, Kimi = magenta.
-* **Key management**: type the key once on first use (stored in NVS); press **Del in the model menu** to clear a stored key; or edit NVS from a browser via bmorcelli Launcher (see below).
-* **Better errors**: API failures now show the server's message (e.g. `401 invalid key`) instead of just a code.
-
-### 🔑 Getting your Kimi key (membership / subscription)
-
-Any Kimi membership tier (**Andante / Moderato / Allegretto / Allegro**) can mint API keys — no separate pay-per-token account needed:
-
-1. Go to the **Kimi Code Console**: https://www.kimi.com/code/console and sign in.
-2. Click **"Create API Key"**, name it, confirm, and **copy it immediately** (shown once, starts with `sk-kimi-`).
-3. Enter it on the device on first use of the **Kimi K3** engine (or set it via Launcher's NVS editor, below).
-
-Notes:
-* Model `k3` requires **Moderato or above**; on other tiers change `KIMI_MODEL` in the sketch to `kimi-for-coding`.
-* Kimi Code keys and Kimi Open Platform keys are **not interchangeable** — wrong pairing returns `401`.
-
-### Which endpoint / key to use
-
-| Key type | `KIMI_API_URL` | `KIMI_MODEL` |
-| --- | --- | --- |
-| **Kimi membership key** (`sk-kimi-...`) | `https://api.kimi.com/coding/v1/chat/completions` *(default)* | `k3` *(default)* |
-| **Open Platform key** (pay-per-token) | `https://api.moonshot.ai/v1/chat/completions` | `kimi-k3` or `kimi-k2.7-code` |
-
-### 🗝️ Setting keys via bmorcelli Launcher (no on-device typing)
-
-If you run this app through [bmorcelli Launcher](https://github.com/bmorcelli/Launcher), its WebUI includes an NVS editor — the easiest way to set long API keys:
-
-1. In Launcher, open `WUI` and browse to the shown IP (default login `admin` / `launcher`).
-2. Open the **NVS editor** → namespace `ai-keys`.
-3. Set `kimi_key` (or `qwen_key` / `ds_key`) to your key and save. WiFi lives in namespace `qwen-config` (`ssid`, `password`).
-4. Launch the app — it reads keys straight from NVS.
-
-### 🚀 Install
-
-* **Via bmorcelli Launcher (recommended)**: compile the sketch (`Sketch > Export Compiled Binary` in Arduino IDE), rename the app `.bin` to something simple like `kimi-cardputer.bin`, copy to a FAT32 SD card, then `SD` → select file → **Install** in Launcher.
-* **Direct flash**: Arduino IDE, `M5Cardputer` + `ArduinoJson` (7.x) libraries, partition scheme **Huge APP (3MB No OTA)**.
-
----
-
+# AI-Cardputer-adv-A-Portable-AI-Assistant
 # 🚀 Qwen-Cardputer: A Portable AI Assistant
 
 **Qwen-Cardputer** is an open-source, portable AI terminal built for the **M5Cardputer**. It integrates the powerful AliCloud Qwen (Tongyi Qianwen) LLM into a handheld form factor, allowing you to interact with advanced artificial intelligence anytime, anywhere via Wi-Fi.
@@ -100,7 +49,7 @@ To use the AI features, you need an API Key from AliCloud DashScope.
 
 ## 📅 Roadmap / 开发计划
 This project is under active development. Future updates will include:
-* [x] Integration of more AI APIs (DeepSeek, **Kimi**).
+* [x] Integration of more AI APIs (DeepSeek, Kimi).
 * [ ] Voice-to-Text capabilities using the onboard microphone.
 * [ ] UI themes and customization options.
 
@@ -187,7 +136,6 @@ v1.2 update
 | **`;` / `.`** | **Scroll**: Navigate lists (Up/Down) | **滚动**：列表向上 / 向下 |
 | **Enter** | **Confirm**: Send / Select / Enter | **确认**：发送消息 / 确认选择 |
 | **Del** | **Delete**: Backspace character | **删除**：回退输入字符 |
-| **Del (model menu)** | **Clear Key**: Erase highlighted engine's saved API key | **清除 Key**：删除当前引擎已存 API Key |
 | **Fn + `,` / `/**` | **Cursor**: Move left / right | **光标**：左右移动输入光标 |
 | **Fn + `;` / `.`** | **Screen Scroll**: View history | **屏幕滚动**：查阅长回复历史 |
 | **Fn + M** | **Switch**: Change AI Model | **切换**：实时弹出模型菜单 |
@@ -225,14 +173,6 @@ v1.2 update
 
 ### 📜 Changelog | 更新日志
 
-* **v1.3 (Current)**:
-* Added Kimi K3 (Moonshot AI) engine via OpenAI-compatible endpoint.
-* Model selector now lists three engines (Qwen / DeepSeek / Kimi).
-* Del in model menu clears the highlighted engine's saved API key.
-* API errors show the server's message; saved WiFi credentials fall back to scan UI on failure.
-* **v1.3 (当前版本)**：新增 Kimi K3（月之暗面）引擎；模型选择器支持三引擎；模型菜单按 Del 可清除已存 Key；API 错误显示服务器详情；WiFi 凭据失效自动回退扫描界面。
-
-
 * **v1.2**:
 * Added DeepSeek API support.
 * Implemented interactive model selection menu.
@@ -244,6 +184,68 @@ v1.2 update
 * Initial Qwen-Turbo implementation.
 * Startup animations and WiFi persistence.
 * **v1.1**：实现基础 Qwen 调用、启动动画及 WiFi 持久化。
+
+
+v1.3 update
+# 🌙 Anakin AI Assistant (v1.3) — Kimi K3
+
+**Anakin v1.3** adds **Kimi K3 (Moonshot AI)** as a third AI engine, alongside **Qwen-Turbo** and **DeepSeek-Chat**.
+
+**Anakin v1.3** 新增第三引擎 **Kimi K3（月之暗面 Moonshot AI）**，与 **通义千问**、**DeepSeek** 并列。
+
+---
+
+### ✨ v1.3 New Features | 新特性
+
+* **🌙 Kimi K3 Engine | Kimi K3 引擎**
+* Native support for Moonshot AI's Kimi via an OpenAI-compatible endpoint (model `k3`), using the same request path as DeepSeek. Selectable in the model menu; the status bar turns **magenta** while active.
+* 原生支持月之暗面 Kimi（OpenAI 兼容接口，模型 `k3`），与 DeepSeek 共用请求路径。模型菜单可选，启用时状态栏为**品红色**。
+
+
+* **🗝️ Key Management | Key 管理**
+* Press `Del` in the model menu to clear the highlighted engine's saved API key — no full factory reset needed. Keys can also be edited from a browser via bmorcelli Launcher's WebUI NVS editor (namespace `ai-keys`).
+* 在模型菜单按 `Del` 可清除当前引擎已保存的 API Key，无需整机复位。也可通过 bmorcelli Launcher 的 WebUI NVS 编辑器在浏览器中修改（命名空间 `ai-keys`）。
+
+
+* **🩺 Error Details | 错误详情**
+* API errors now show the server's message (e.g. `401` invalid key) instead of just a status code.
+* API 错误现在显示服务器返回信息（如 `401` Key 无效），不再只显示状态码。
+
+
+* **📶 WiFi Fallback | WiFi 回退**
+* Saved WiFi credentials that fail now fall back to the scan UI instead of retrying silently.
+* 已存 WiFi 凭据失效时自动回退到扫描界面，不再静默重试。
+
+---
+
+### 🔑 Getting a Kimi API Key | 获取 Kimi 密钥
+
+Any Kimi membership tier (Andante / Moderato / Allegretto / Allegro) can create API keys — no separate pay-per-token account needed:
+任何 Kimi 会员档位（Andante / Moderato / Allegretto / Allegro）均可创建 API Key，无需单独开通按量付费账户：
+
+1. Visit the **Kimi Code Console**: https://www.kimi.com/code/console and sign in. (访问 Kimi Code 控制台并登录)
+2. Click **"Create API Key"** and copy it immediately — it is shown only once and starts with `sk-kimi-`. (点击“创建 API Key”并立即复制，仅显示一次，以 `sk-kimi-` 开头)
+3. Enter it on the device on first use of the **Kimi K3** engine. (首次使用 Kimi K3 引擎时在设备上输入)
+
+| Key type 密钥类型 | `KIMI_API_URL` | `KIMI_MODEL` |
+| --- | --- | --- |
+| **Kimi membership key** (`sk-kimi-...`) | `https://api.kimi.com/coding/v1/chat/completions` *(default)* | `k3` *(default)* |
+| **Open Platform key** (pay-per-token) | `https://api.moonshot.ai/v1/chat/completions` | `kimi-k3` / `kimi-k2.7-code` |
+
+Notes 注意:
+* Model `k3` requires **Moderato or above**; on other tiers set `KIMI_MODEL` to `kimi-for-coding`. (模型 `k3` 需 Moderato 及以上会员，其他档位可将 `KIMI_MODEL` 改为 `kimi-for-coding`)
+* Kimi Code keys and Open Platform keys are **not interchangeable** — a mismatch returns `401`. (Kimi Code 密钥与开放平台密钥不通用，混用会返回 `401`)
+
+---
+
+### 📜 Changelog | 更新日志
+
+* **v1.3 (Current)**:
+* Added Kimi K3 (Moonshot AI) engine via OpenAI-compatible endpoint.
+* Model selector now lists three engines; magenta status bar for Kimi.
+* `Del` in model menu clears the highlighted engine's saved API key.
+* API errors show the server's message; saved WiFi credentials fall back to scan UI on failure.
+* **v1.3 (当前版本)**：新增 Kimi K3（月之暗面）引擎（OpenAI 兼容接口）；模型选择器支持三引擎，Kimi 状态栏为品红色；模型菜单按 Del 可清除已存 Key；API 错误显示服务器详情；WiFi 凭据失效自动回退扫描界面。
 
 
 **Maintained by: Anakin** *Stay tuned for more updates! 本项目将持续维护，敬请期待更多功能！*
