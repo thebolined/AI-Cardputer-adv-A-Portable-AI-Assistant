@@ -4,17 +4,22 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
-// --- Kimi (Moonshot AI) 配置 ---
-// Kimi Code 订阅 Key (sk-kimi-...) 走 coding 端点；
-// 普通平台按量付费 Key 请改用 https://api.moonshot.ai/v1/chat/completions
+// --- Kimi (Moonshot AI) 配置 / Kimi config ---
+// Kimi 会员订阅 Key (sk-kimi-...) 走 coding 端点；模型 k3 需 Moderato 及以上会员，
+// 其他档位可将 KIMI_MODEL 改为 "kimi-for-coding"。
+// 按量付费平台 Key 请改用 https://api.moonshot.ai/v1/chat/completions
 // 并将模型改为 kimi-k3 或 kimi-k2.7-code。
+// Kimi membership keys (sk-kimi-...) use the coding endpoint; model k3 requires
+// Moderato or above, other tiers can set KIMI_MODEL to "kimi-for-coding".
+// Pay-per-token platform keys should use https://api.moonshot.ai/v1/chat/completions
+// with model kimi-k3 or kimi-k2.7-code instead.
 #define KIMI_API_URL "https://api.kimi.com/coding/v1/chat/completions"
-#define KIMI_MODEL   "kimi-for-coding"
+#define KIMI_MODEL   "k3"
 
 Preferences prefs;
 M5Canvas canvas(&M5Cardputer.Display); 
 
-// 持久化变量
+// 持久化变量 / Persistent variables
 String ssid = "";
 String password = ""; 
 String qwenApiKey = "";
@@ -24,22 +29,29 @@ String userInput = "";
 String aiResponse = "Select a model to start";
 String lastUserQuery = "";
 
-// 运行时变量
+// 运行时变量 / Runtime variables
 int scrollY = 0;
 int cursorLine = 0;
 int lastDisplayedBat = -1;
-int selectedModelIdx = 0; // 0: Qwen-Turbo, 1: DeepSeek-Chat, 2: Kimi-Code
+int selectedModelIdx = 0; // 0: Qwen-Turbo, 1: DeepSeek-Chat, 2: Kimi K3
 const int modelCount = 3;
-const char* modelList[] = {"Qwen-Turbo", "DeepSeek-Chat", "Kimi-Code"};
+const char* modelList[] = {"Qwen-Turbo", "DeepSeek-Chat", "Kimi K3"};
 
-// --- 各模型状态栏配色 ---
+// --- 各模型状态栏配色 / Status bar color per engine ---
 uint16_t modelColor() {
     if (selectedModelIdx == 1) return BLUE;
     if (selectedModelIdx == 2) return MAGENTA;
     return DARKCYAN;
 }
 
-// --- 启动动画 ---
+void saveWiFiPrefs() {
+    prefs.begin("qwen-config", false);
+    prefs.putString("ssid", ssid);
+    prefs.putString("password", password);
+    prefs.end();
+}
+
+// --- 启动动画 / Startup animation ---
 void playStartupAnimation() {
     canvas.fillSprite(BLACK);
     canvas.setFont(&fonts::efontCN_12);
@@ -52,7 +64,7 @@ void playStartupAnimation() {
         }
         canvas.setTextSize(1.0);
         canvas.setTextColor(DARKGREY);
-        canvas.drawString("Anakin v1.3 + Kimi", 140, 118);
+        canvas.drawString("Anakin v1.3", 160, 118);
         if (i > 10 && i < 40) {
             canvas.setTextColor(WHITE);
             if (i % 2 == 0) canvas.drawCenterString("SYSTEM STARTING...", 120, 55);
@@ -62,7 +74,7 @@ void playStartupAnimation() {
     }
 }
 
-// --- 电量显示  ---
+// --- 电量显示 / Battery indicator ---
 void drawBattery() {
     int currentBat = M5Cardputer.Power.getBatteryLevel();
     if (currentBat > 100) currentBat = 100;
@@ -72,7 +84,7 @@ void drawBattery() {
     canvas.printf("%d%%", lastDisplayedBat);
 }
 
-// --- 主 UI 绘制  ---
+// --- 主 UI 绘制 / Main UI ---
 void updateDisplay(int inputPos) {
     canvas.fillSprite(BLACK);
     canvas.setFont(&fonts::efontCN_12);
@@ -104,7 +116,7 @@ void updateDisplay(int inputPos) {
     canvas.pushSprite(0, 0);
 }
 
-// --- 键盘输入逻辑 ---
+// --- 键盘输入逻辑 / Keyboard input ---
 String getKbdInput(String title, String initialValue = "") {
     String input = initialValue;
     int pos = input.length();
@@ -141,7 +153,9 @@ String getKbdInput(String title, String initialValue = "") {
     }
 }
 
-// --- 模型选择界面 ---
+// --- 模型选择界面 / Model selector ---
+// Enter = 确认选择 ; Del = 清除当前高亮模型已存的 Key (换 Key / 修复错误 Key 用)
+// Enter = select ; Del = clear the highlighted engine's saved API key
 void selectModelUI() {
     while (true) {
         M5Cardputer.update();
@@ -158,15 +172,32 @@ void selectModelUI() {
             canvas.setTextColor(WHITE);
             canvas.print(modelList[i]);
         }
+        canvas.setCursor(5, 122);
+        canvas.setTextColor(DARKGREY);
+        canvas.print("Del: clear saved key");
         canvas.pushSprite(0, 0);
 
         if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
-            if (M5Cardputer.Keyboard.isKeyPressed(';')) { // 上
+            auto s = M5Cardputer.Keyboard.keysState();
+            if (s.del) { // 清除高亮模型的 Key / Clear highlighted engine's key
+                prefs.begin("ai-keys", false);
+                if (selectedModelIdx == 0)      { prefs.remove("qwen_key"); qwenApiKey = ""; }
+                else if (selectedModelIdx == 1) { prefs.remove("ds_key");   dsApiKey = ""; }
+                else                            { prefs.remove("kimi_key"); kimiApiKey = ""; }
+                prefs.end();
+                canvas.setCursor(5, 122);
+                canvas.setTextColor(RED);
+                canvas.print("Key cleared! Enter=re-set");
+                canvas.pushSprite(0, 0);
+                delay(900);
+                continue;
+            }
+            if (M5Cardputer.Keyboard.isKeyPressed(';')) { // 上 / up
                 if (selectedModelIdx > 0) selectedModelIdx--;
-            } else if (M5Cardputer.Keyboard.isKeyPressed('.')) { // 下
+            } else if (M5Cardputer.Keyboard.isKeyPressed('.')) { // 下 / down
                 if (selectedModelIdx < modelCount - 1) selectedModelIdx++;
             } else if (M5Cardputer.Keyboard.isKeyPressed(KEY_ENTER)) {
-                // 检查选定模型的 Key
+                // 检查选定模型的 Key / Load or prompt for the engine's key
                 prefs.begin("ai-keys", false);
                 if (selectedModelIdx == 0) {
                     qwenApiKey = prefs.getString("qwen_key", "");
@@ -195,7 +226,7 @@ void selectModelUI() {
     }
 }
 
-// --- WiFi 扫描与连接 ---
+// --- WiFi 扫描与连接 / WiFi scan & connect ---
 bool scanAndConnect() {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
@@ -242,7 +273,7 @@ bool scanAndConnect() {
     }
 }
 
-// --- API接口调用 (Qwen / DeepSeek / Kimi) ---
+// --- API接口调用 / API call (Qwen / DeepSeek / Kimi) ---
 void callAPI() {
     if (userInput.length() == 0) return;
     lastUserQuery = userInput;
@@ -270,12 +301,12 @@ void callAPI() {
     http.addHeader("Content-Type", "application/json");
     
     JsonDocument doc;
-    if (selectedModelIdx == 0) { // Qwen 格式
+    if (selectedModelIdx == 0) { // Qwen 格式 / Qwen format
         doc["model"] = "qwen-turbo";
         doc["input"]["messages"][0]["role"] = "user";
         doc["input"]["messages"][0]["content"] = savedQuery;
         doc["parameters"]["result_format"] = "message";
-    } else { // OpenAI 兼容格式 (DeepSeek / Kimi)
+    } else { // OpenAI 兼容格式 / OpenAI-compatible format (DeepSeek / Kimi)
         doc["model"] = (selectedModelIdx == 2) ? KIMI_MODEL : "deepseek-chat";
         JsonArray msgs = doc["messages"].to<JsonArray>();
         if (selectedModelIdx == 2) {
@@ -300,13 +331,17 @@ void callAPI() {
         else
             aiResponse = resDoc["choices"][0]["message"]["content"].as<String>();
     } else {
-        aiResponse = "Error: " + String(code);
+        // 显示服务器返回的错误详情，便于排查 / Show server error detail (e.g. 401 invalid key)
+        String resp = http.getString();
+        resp.replace("\n", " ");
+        if (resp.length() > 100) resp = resp.substring(0, 100) + "...";
+        aiResponse = "Err " + String(code) + ": " + resp;
     }
     http.end();
     updateDisplay(0);
 }
 
-// --- 主函数 ---
+// --- 主函数 / Main ---
 void setup() {
     auto cfg = M5.config();
     M5Cardputer.begin(cfg, true);
@@ -320,15 +355,19 @@ void setup() {
 
     if (ssid == "") {
         while(!scanAndConnect()); 
-        prefs.begin("qwen-config", false);
-        prefs.putString("ssid", ssid);
-        prefs.putString("password", password);
-        prefs.end();
+        saveWiFiPrefs();
     } else {
         WiFi.begin(ssid.c_str(), password.c_str());
+        int ms = 0;
+        while (WiFi.status() != WL_CONNECTED && ms < 10000) { delay(500); ms += 500; }
+        if (WiFi.status() != WL_CONNECTED) { // 凭据失效则回退到扫描界面 / fall back to scan UI
+            WiFi.disconnect();
+            while(!scanAndConnect());
+            saveWiFiPrefs();
+        }
     }
 
-    // WiFi连上后，弹出模型选择界面
+    // WiFi连上后，弹出模型选择界面 / Show model selector once online
     selectModelUI();
     updateDisplay(0);
 }
@@ -336,7 +375,7 @@ void setup() {
 void loop() {
     M5Cardputer.update();
     
-    // G0 重置逻辑 
+    // G0 重置逻辑 / G0 factory reset
     if (digitalRead(0) == LOW) {
         unsigned long startTime = millis();
         while (digitalRead(0) == LOW) {
@@ -352,7 +391,7 @@ void loop() {
         }
     }
 
-    // 键盘逻辑
+    // 键盘逻辑 / Keyboard handling
     if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
         auto s = M5Cardputer.Keyboard.keysState();
         if (s.fn) {
@@ -360,7 +399,7 @@ void loop() {
             if (M5Cardputer.Keyboard.isKeyPressed('.')) scrollY -= 20;
             if (M5Cardputer.Keyboard.isKeyPressed(',')) cursorLine = max(0, cursorLine - 1);
             if (M5Cardputer.Keyboard.isKeyPressed('/')) cursorLine = min((int)userInput.length(), cursorLine + 1);
-            // 新增快捷键：Fn + M 重新选择模型
+            // 快捷键：Fn + M 重新选择模型 / Fn + M re-opens the model menu
             if (M5Cardputer.Keyboard.isKeyPressed('m')) { selectModelUI(); aiResponse = "Switched Model"; }
         } 
         else if (s.enter) { 
