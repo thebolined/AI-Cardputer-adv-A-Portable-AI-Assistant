@@ -1,13 +1,13 @@
 # AI-Cardputer-adv-A-Portable-AI-Assistant (Kimi Fork)
 
-> **This fork adds 🌙 Kimi (Moonshot AI) support in v1.3 — see below.**
+> **This fork adds 🌙 Kimi (Moonshot AI) support (v1.3) and 💾 SD-card credential import (v1.4) — see below.**
 > Original project by thebolined / Anakin. All credit for v1.0–v1.2 goes upstream.
 
 ---
 
 ## 🌙 v1.3 — Kimi (Moonshot AI) Support (this fork)
 
-`m5stack_ai_assistant(v1.3).ino` adds **Kimi** as a third AI engine alongside Qwen-Turbo and DeepSeek-Chat.
+`m5stack_ai_assistant(v1.4).ino` adds **Kimi** as a third AI engine alongside Qwen-Turbo and DeepSeek-Chat.
 
 ### What changed
 * **Kimi engine added**: model selector now lists `Qwen-Turbo` / `DeepSeek-Chat` / `Kimi-Code` (scroll with `;` / `.`, `Fn + M` to switch mid-chat).
@@ -24,7 +24,7 @@ You do **not** need a separate pay-per-token developer account. Any Kimi members
 1. Go to the **Kimi Code Console**: https://www.kimi.com/code/console and sign in with your Kimi account.
 2. Click **"Create API Key"**, give it a name (e.g. `cardputer`), and confirm.
 3. **Copy the key immediately** — it is shown only once. It starts with `sk-kimi-`. (You can hold up to 5 keys.)
-4. On the Cardputer, pick **Kimi-Code** in the model menu and paste the key when prompted. It is saved in NVS, so you only do this once.
+4. Get the key onto the device — either via SD card (v1.4, recommended, see below) or by typing it when the **Kimi-Code** engine prompts on first use.
 
 Notes:
 * Usage draws from your **membership quota**, not a metered bill.
@@ -44,12 +44,38 @@ If you get `Error: 401`, you're using the wrong endpoint for your key type — f
 
 ---
 
+## 💾 v1.4 — Import keys & WiFi from SD card (this fork)
+
+Typing a 70-character API key (or a long WiFi password) on the Cardputer keyboard is painful and error-prone. v1.4 lets you stage credentials as plain text files on the SD card root instead.
+
+### File formats (place on SD root)
+
+| File | Contents | Imported into |
+| --- | --- | --- |
+| `/kimi_key.txt` | one line: your `sk-kimi-...` key | NVS `kimi_key` |
+| `/qwen_key.txt` | one line: your DashScope key | NVS `qwen_key` |
+| `/ds_key.txt` | one line: your DeepSeek key | NVS `ds_key` |
+| `/wifi.txt` | line 1: SSID, line 2: password | NVS WiFi config |
+
+### How it works
+1. Create the file(s) on your computer, copy to the **root of a FAT32 microSD card**, insert the card.
+2. Boot the app. WiFi is imported at startup; API keys are imported the first time you select that engine.
+3. **After a successful import the file is automatically deleted from the SD card** — no plaintext key lingers on the card. The credential lives in NVS from then on (until a G0 factory reset).
+4. Lookup order per engine: **NVS → SD txt file → manual keyboard input**. If no SD card / no file is found, the old manual prompt appears as before.
+
+Security notes:
+* The `.gitignore` in this repo blocks `*_key.txt` and `wifi.txt` — never commit these files.
+* Anyone with the SD card can read the files before import. Import once, and the card is clean again.
+* Bonus fix in v1.4: saved WiFi credentials that fail now fall back to the scan UI instead of silently retrying.
+
+---
+
 ### 🚀 Install Path A — via bmorcelli Launcher (recommended)
 
 Run this app **alongside Bruce and other firmware**, switchable from a boot menu. Source: [Launcher wiki — Obtaining binaries to launch](https://github.com/bmorcelli/Launcher/wiki/Obtaining-binaries-to-launch).
 
 1. **Install Launcher** on the Cardputer: web flasher at https://bmorcelli.github.io/Launcher/ (or via M5Burner).
-2. **Export the binary**: Arduino IDE → open `m5stack_ai_assistant(v1.3).ino` → `Sketch > Export Compiled Binary` → find the app binary in the generated `build` folder.
+2. **Export the binary**: Arduino IDE → open `m5stack_ai_assistant(v1.4).ino` → `Sketch > Export Compiled Binary` → find the app binary in the generated `build` folder.
 3. **Rename it** to something simple, e.g. `kimi-cardputer.bin` — parentheses and spaces in filenames can trip the installer.
 4. **Copy it to a FAT32 microSD card**, insert the card, open `SD` in Launcher → select the file → **Install**. Launcher 2.7+ checks the image and creates a suitable app partition automatically — you do **not** need the "Huge APP" partition scheme for this path.
    * No SD card? Open `WUI` in Launcher, browse to the shown IP from your computer, and upload the `.bin` there (default login `admin` / `launcher`).
@@ -62,7 +88,7 @@ Notes:
 
 ### 🚀 Install Path B — direct flash (standalone)
 
-Arduino IDE → install `M5Cardputer` + `ArduinoJson` (7.x) libraries → partition scheme **Huge APP (3MB No OTA)** → upload. On first boot, select **Kimi-Code** in the model menu and paste your API key.
+Arduino IDE → install `M5Cardputer` + `ArduinoJson` (7.x) libraries → partition scheme **Huge APP (3MB No OTA)** → upload. On first boot, select **Kimi-Code** in the model menu and paste your API key (or pre-stage it via SD as above).
 
 ---
 
@@ -117,6 +143,7 @@ To use the AI features, you need an API Key from AliCloud DashScope.
 ## 📅 Roadmap / 开发计划
 This project is under active development. Future updates will include:
 * [x] Integration of more AI APIs (DeepSeek, ~~GPT-4o, Claude~~ → **Kimi** added in this fork).
+* [x] SD-card credential import (no more typing long keys).
 * [ ] Voice-to-Text capabilities using the onboard microphone.
 * [ ] UI themes and customization options.
 
@@ -239,6 +266,13 @@ v1.2 update
 ---
 
 ### 📜 Changelog | 更新日志
+
+* **v1.4 (this fork)**:
+* Import API keys (`kimi_key.txt` / `qwen_key.txt` / `ds_key.txt`) and WiFi (`wifi.txt`) from SD card root.
+* Imported files are auto-deleted from SD; credentials persist in NVS.
+* Fallback to WiFi scan UI when saved credentials fail.
+* **v1.4（本 Fork）**：支持从 SD 卡导入 Key 与 WiFi 凭据；导入后自动删除明文文件；凭据失效自动回退到扫描界面。
+
 
 * **v1.3 (this fork)**:
 * Added Kimi (Moonshot AI) engine via OpenAI-compatible endpoint.
